@@ -1,5 +1,7 @@
 import time
 
+import re
+
 from kivy.config import Config
 from pytube import YouTube
 
@@ -25,13 +27,16 @@ from kivy.core.window import Window
 
 from functools import partial
 
+from kivy.uix.dropdown import DropDown
+
 Window.size = (500, 700)
 
 
 class MyApp(MDApp):
 
-    def getLinkInfo(self, event, widndow):
+    def getLinkInfo(self, event, layout):
         self.link = self.linkinput.text
+        self.checklink = re.match()
         self.yt = YouTube(self.link)
 
         self.views = str(self.yt.views)
@@ -44,17 +49,35 @@ class MyApp(MDApp):
 
         self.downloadButton.pos_hint={'center_x': 0.5, 'center_y':0.1}
 
+        self.audio = self.yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
+        print(self.audio)
+
+        self.dropDown = DropDown()
+
+        for video in self.audio:
+            btton = Button(text=video.resolution, size_hint_y=None, height = 30)
+
+            btton.bind(on_release = lambda btton:self.dropDown.select(btton.text))  
+
+            self.dropDown.add_widget(btton)
+        
+        self.main_button = Button(text = '144', size_hint=(None, None), pos=(350,65), height=50)
+
+        self.main_button.bind(on_release = self.dropDown.open)
+        
+        self.dropDown.bind(on_select = lambda instance, x:setattr(self.main_button, 'text', x))
+
+        layout.add_widget(self.main_button)
+
 
     def download(self, event, layout):
-        self.ys = self.yt.streams.get_highest_resolution()
+        self.ys = self.yt.streams.filter(file_extension='audio').filter(res=self.main_button.text).first()
 
         print("Downloading")
 
         self.ys.download('C:/Users/karol/OneDrive/Pulpit/apki/yd_down_manager')
 
         print("Download complete :)")
-        time.sleep(1000)
-        exit()
 
 
     def build(self):
@@ -92,7 +115,10 @@ class MyApp(MDApp):
                                      bold = True, font_size = 24, background_color=(0,1,0))
         
         self.downloadButton.bind(on_press = partial(self.download, layout))
-        
+
+        self.errorLabel = Label(text = "", pos_hint={'center_x':0.5, 'center_y': 0.5},
+                                                     size_hint = (1,1), font_size=20, color=(1, 0, 0))
+
 
         layout.add_widget(self.image)
         layout.add_widget(self.youtubelink)
@@ -102,6 +128,7 @@ class MyApp(MDApp):
         layout.add_widget(self.lengthLabel)
 
         layout.add_widget(self.downloadButton)
+        layout.add_widget(self.errorLabel)
 
         return layout
 
